@@ -1,0 +1,62 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// Usuários cadastrados no sistema
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(150)
+  senha     String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locacoes Locacao[]
+}
+
+// Veículos disponíveis para locação
+model Veiculo {
+  id         Int      @id @default(autoincrement())
+  marca      String   @db.VarChar(80)
+  modelo     String   @db.VarChar(100)
+  ano        Int
+  placa      String   @unique @db.VarChar(10)
+  valorDiaria Decimal  @db.Decimal(10, 2)
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  locacoes Locacao[]
+}
+
+// Locações realizadas pelos usuários
+model Locacao {
+  id         Int            @id @default(autoincrement())
+  usuarioId  Int
+  veiculoId  Int
+  dataInicio DateTime
+  dataFim    DateTime
+  valorTotal Decimal        @db.Decimal(10, 2)
+  status     StatusLocacao  @default(ATIVA)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  veiculo Veiculo @relation(fields: [veiculoId], references: [id])
+
+  @@index([usuarioId])
+  @@index([veiculoId])
+  @@index([dataInicio, dataFim])
+}
+
+enum StatusLocacao {
+  ATIVA
+  FINALIZADA
+  CANCELADA
+}
