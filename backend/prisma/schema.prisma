@@ -42,6 +42,7 @@ model Locacao {
   veiculoId  Int
   dataInicio DateTime
   dataFim    DateTime
+  dataDevolucao DateTime?
   valorTotal Decimal        @db.Decimal(10, 2)
   status     StatusLocacao  @default(ATIVA)
   createdAt  DateTime       @default(now())

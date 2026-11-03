@@ -1,9 +1,29 @@
 import express from "express";
 import prisma from "./config/prisma.js";
+import usuarioRoutes from "./routes/usuarioRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import { autenticarToken } from "./middlewares/authMiddleware.js";
+import veiculoRoutes from "./routes/veiculoRoutes.js";
+import locacaoRoutes from "./routes/locacaoRoutes.js";
 
 const app = express();
 
 app.use(express.json());
+
+app.use("/usuarios", usuarioRoutes);
+
+app.use("/auth", authRoutes);
+
+app.use("/veiculos", veiculoRoutes);
+
+app.use("/locacoes", locacaoRoutes);
+
+app.get("/teste-autenticacao", autenticarToken, (req, res) => {
+  res.json({
+    mensagem: "Acesso autorizado!",
+    usuario: req.usuario
+  });
+});
 
 const PORT = 3000;
 
