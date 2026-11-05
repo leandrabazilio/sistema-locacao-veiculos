@@ -13,7 +13,7 @@ export async function criar(req, res) {
       locacao
     });
   } catch (error) {
-    return res.status(400).json({
+    return res.status(error.statusCode || 400).json({
       mensagem: error.message
     });
   }
@@ -43,7 +43,11 @@ export async function finalizar(req, res) {
       locacao
     });
   } catch (error) {
-    return res.status(400).json({
+    const statusCode =
+     error.statusCode ||
+      (error.message === "Locação não encontrada." ? 404 : 400);
+
+    return res.status(statusCode).json({
       mensagem: error.message
     });
   }

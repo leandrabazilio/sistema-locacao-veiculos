@@ -35,7 +35,9 @@ export async function criarLocacao(dados, usuarioId) {
     });
 
     if (!veiculo) {
-      throw new Error("Veículo não encontrado.");
+      const error = new Error("Veículo não encontrado.");
+      error.statusCode = 404;
+      throw error;
     }
 
     if (!veiculo.ativo) {
@@ -116,7 +118,9 @@ export async function finalizarLocacao(locacaoId, usuarioId) {
     });
 
     if (!locacao) {
-      throw new Error("Locação não encontrada.");
+      const error = new Error("Locação não encontrada.");
+      error.statusCode = 404;
+      throw error;
     }
 
     if (locacao.status !== "ATIVA") {
