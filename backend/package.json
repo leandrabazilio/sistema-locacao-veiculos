@@ -7,7 +7,10 @@
   "scripts": {
     "dev": "nodemon --exec tsx src/index.js",
     "start": "tsx src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "prisma db seed",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev"
   },
   "keywords": [],
   "author": "",

@@ -8,7 +8,6 @@ datasource db {
   provider = "mysql"
 }
 
-// Usuários cadastrados no sistema
 model Usuario {
   id        Int      @id @default(autoincrement())
   nome      String   @db.VarChar(100)
@@ -20,7 +19,6 @@ model Usuario {
   locacoes Locacao[]
 }
 
-// Veículos disponíveis para locação
 model Veiculo {
   id         Int      @id @default(autoincrement())
   marca      String   @db.VarChar(80)
@@ -35,7 +33,6 @@ model Veiculo {
   locacoes Locacao[]
 }
 
-// Locações realizadas pelos usuários
 model Locacao {
   id         Int            @id @default(autoincrement())
   usuarioId  Int

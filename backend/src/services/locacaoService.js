@@ -1,32 +1,39 @@
 import prisma from "../config/prisma.js";
+import AppError from "../utils/AppError.js";
+
+const MILISSEGUNDOS_POR_DIA = 1000 * 60 * 60 * 24;
+
+function converterId(valor, mensagem) {
+  const id = Number(valor);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new AppError(mensagem);
+  }
+
+  return id;
+}
 
 export async function criarLocacao(dados, usuarioId) {
   const { veiculoId, dataInicio, dataFim } = dados;
 
   if (!veiculoId || !dataInicio || !dataFim) {
-    throw new Error("Preencha todos os campos da locação.");
+    throw new AppError("Preencha todos os campos da locação.");
   }
 
+  const idVeiculo = converterId(veiculoId, "Informe um veículo válido.");
   const inicio = new Date(dataInicio);
   const fim = new Date(dataFim);
-  const idVeiculo = Number(veiculoId);
 
-  if (
-    !Number.isInteger(idVeiculo) ||
-    idVeiculo <= 0 ||
-    isNaN(inicio.getTime()) ||
-    isNaN(fim.getTime())
-  ) {
-    throw new Error("Informe dados válidos para a locação.");
+  if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) {
+    throw new AppError("Informe datas válidas para a locação.");
   }
 
   if (fim <= inicio) {
-    throw new Error("A data de término deve ser posterior à data de início.");
+    throw new AppError("A data de término deve ser posterior à data de início.");
   }
 
-  const diferenca = fim.getTime() - inicio.getTime();
   const quantidadeDiarias = Math.ceil(
-    diferenca / (1000 * 60 * 60 * 24)
+    (fim.getTime() - inicio.getTime()) / MILISSEGUNDOS_POR_DIA
   );
 
   return await prisma.$transaction(async (tx) => {
@@ -35,13 +42,7 @@ export async function criarLocacao(dados, usuarioId) {
     });
 
     if (!veiculo) {
-      const error = new Error("Veículo não encontrado.");
-      error.statusCode = 404;
-      throw error;
-    }
-
-    if (!veiculo.ativo) {
-      throw new Error("Este veículo não está disponível para locação.");
+      throw new AppError("Veículo não encontrado.", 404);
     }
 
     const locacaoAtiva = await tx.locacao.findFirst({
@@ -51,11 +52,11 @@ export async function criarLocacao(dados, usuarioId) {
       }
     });
 
-    if (locacaoAtiva) {
-      throw new Error("Este veículo já possui uma locação ativa.");
+    if (!veiculo.ativo || locacaoAtiva) {
+      throw new AppError("Este veículo não está disponível para locação.", 409);
     }
 
-    const atualizacao = await tx.veiculo.updateMany({
+    const reserva = await tx.veiculo.updateMany({
       where: {
         id: idVeiculo,
         ativo: true
@@ -65,12 +66,12 @@ export async function criarLocacao(dados, usuarioId) {
       }
     });
 
-    if (atualizacao.count === 0) {
-      throw new Error("Este veículo não está disponível para locação.");
+    if (reserva.count === 0) {
+      throw new AppError("Este veículo não está disponível para locação.", 409);
     }
 
     const valorTotal =
-      Number(veiculo.valorDiaria) * quantidadeDiarias;
+      Math.round(Number(veiculo.valorDiaria) * quantidadeDiarias * 100) / 100;
 
     return await tx.locacao.create({
       data: {
@@ -90,67 +91,55 @@ export async function criarLocacao(dados, usuarioId) {
 
 export async function listarLocacoes(usuarioId) {
   return await prisma.locacao.findMany({
-    where: {
-      usuarioId
-    },
-    include: {
-      veiculo: true
-    },
-    orderBy: {
-      createdAt: "desc"
-    }
+    where: { usuarioId },
+    include: { veiculo: true },
+    orderBy: { createdAt: "desc" }
   });
 }
 
 export async function finalizarLocacao(locacaoId, usuarioId) {
-  const id = Number(locacaoId);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new Error("Informe uma locação válida.");
-  }
+  const id = converterId(locacaoId, "Informe uma locação válida.");
 
   return await prisma.$transaction(async (tx) => {
-    const locacao = await tx.locacao.findFirst({
-      where: {
-        id,
-        usuarioId
-      }
+    const locacao = await tx.locacao.findUnique({
+      where: { id }
     });
 
     if (!locacao) {
-      const error = new Error("Locação não encontrada.");
-      error.statusCode = 404;
-      throw error;
+      throw new AppError("Locação não encontrada.", 404);
+    }
+
+    if (locacao.usuarioId !== usuarioId) {
+      throw new AppError("Você não tem permissão para finalizar esta locação.", 403);
     }
 
     if (locacao.status !== "ATIVA") {
-      throw new Error("Esta locação já foi finalizada.");
+      throw new AppError("Esta locação já foi finalizada.", 409);
     }
 
-    const dataDevolucao = new Date();
-
-    await tx.locacao.update({
-      where: { id },
+    const encerramento = await tx.locacao.updateMany({
+      where: {
+        id,
+        status: "ATIVA"
+      },
       data: {
         status: "FINALIZADA",
-        dataDevolucao
+        dataDevolucao: new Date()
       }
     });
 
+    if (encerramento.count === 0) {
+      throw new AppError("Esta locação já foi finalizada.", 409);
+    }
+
     await tx.veiculo.update({
-      where: {
-        id: locacao.veiculoId
-      },
-      data: {
-        ativo: true
-      }
+      where: { id: locacao.veiculoId },
+      data: { ativo: true }
     });
 
     return await tx.locacao.findUnique({
       where: { id },
-      include: {
-        veiculo: true
-      }
+      include: { veiculo: true }
     });
   });
 }

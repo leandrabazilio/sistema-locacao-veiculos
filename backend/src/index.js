@@ -1,31 +1,24 @@
+import "dotenv/config";
 import express from "express";
 import prisma from "./config/prisma.js";
 import usuarioRoutes from "./routes/usuarioRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import { autenticarToken } from "./middlewares/authMiddleware.js";
 import veiculoRoutes from "./routes/veiculoRoutes.js";
 import locacaoRoutes from "./routes/locacaoRoutes.js";
+import { permitirFrontend } from "./middlewares/corsMiddleware.js";
+import { rotaNaoEncontrada, tratarErros } from "./middlewares/errorMiddleware.js";
+
+if (!process.env.JWT_SECRET) {
+  console.error("A variável JWT_SECRET não foi definida no arquivo .env.");
+  process.exit(1);
+}
 
 const app = express();
 
+const PORT = process.env.PORT || 3000;
+
+app.use(permitirFrontend);
 app.use(express.json());
-
-app.use("/usuarios", usuarioRoutes);
-
-app.use("/auth", authRoutes);
-
-app.use("/veiculos", veiculoRoutes);
-
-app.use("/locacoes", locacaoRoutes);
-
-app.get("/teste-autenticacao", autenticarToken, (req, res) => {
-  res.json({
-    mensagem: "Acesso autorizado!",
-    usuario: req.usuario
-  });
-});
-
-const PORT = 3000;
 
 app.get("/", (req, res) => {
   res.json({
@@ -48,6 +41,14 @@ app.get("/teste-banco", async (req, res) => {
     });
   }
 });
+
+app.use("/usuarios", usuarioRoutes);
+app.use("/auth", authRoutes);
+app.use("/veiculos", veiculoRoutes);
+app.use("/locacoes", locacaoRoutes);
+
+app.use(rotaNaoEncontrada);
+app.use(tratarErros);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

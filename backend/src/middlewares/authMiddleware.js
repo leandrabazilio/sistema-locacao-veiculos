@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
+import { buscarUsuarioPorId } from "../services/usuarioService.js";
 
-export function autenticarToken(req, res, next) {
+export async function autenticarToken(req, res, next) {
   const cabecalho = req.headers.authorization;
 
   if (!cabecalho) {
@@ -17,17 +18,25 @@ export function autenticarToken(req, res, next) {
     });
   }
 
-  const token = partes[1];
+  let dadosToken;
 
   try {
-    const dadosUsuario = jwt.verify(token, process.env.JWT_SECRET);
-
-    req.usuario = dadosUsuario;
-
-    next();
+    dadosToken = jwt.verify(partes[1], process.env.JWT_SECRET);
   } catch (error) {
     return res.status(401).json({
       mensagem: "Token inválido ou expirado."
     });
   }
+
+  const usuario = await buscarUsuarioPorId(dadosToken.id);
+
+  if (!usuario) {
+    return res.status(401).json({
+      mensagem: "O usuário deste token não existe mais."
+    });
+  }
+
+  req.usuario = usuario;
+
+  next();
 }
