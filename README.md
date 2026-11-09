@@ -2,118 +2,101 @@
 
 ## Sobre o projeto
 
-O Sistema de Locação de Veículos é um projeto acadêmico desenvolvido com o objetivo de gerenciar o cadastro de usuários, veículos e locações.
+O Sistema de Locação de Veículos é um projeto acadêmico da disciplina Programação com Frameworks Web. Ele permite cadastrar usuários, autenticar, cadastrar veículos, consultar a disponibilidade e registrar locações e devoluções.
 
-A aplicação permite cadastrar usuários, realizar autenticação, registrar veículos, consultar a disponibilidade e controlar o processo de locação e devolução.
-
-O backend foi desenvolvido utilizando Node.js, Express, Prisma ORM e MySQL, com autenticação por JWT e criptografia de senhas utilizando bcryptjs.
+O backend usa Node.js, Express, Prisma ORM e MySQL, com autenticação JWT e senhas protegidas com bcryptjs. O frontend usa React com Vite e consome a API com `fetch`.
 
 ## Tecnologias utilizadas
 
-- **Node.js:** ambiente de execução JavaScript.
-- **Express:** criação das rotas e da API REST.
-- **Prisma ORM:** comunicação e gerenciamento do banco de dados.
-- **MySQL:** sistema de gerenciamento do banco de dados.
-- **JWT:** autenticação e proteção das rotas.
-- **bcryptjs:** criptografia das senhas.
-- **React:** tecnologia utilizada no desenvolvimento do frontend.
+- **Node.js e Express:** API REST.
+- **Prisma ORM e MySQL:** persistência relacional, relacionamentos e migrations.
+- **JWT:** autenticação das rotas protegidas.
+- **bcryptjs:** hash das senhas.
+- **React (Vite):** interface web.
 
 ## Estrutura do projeto
 
 ```text
 sistema-locacao-veiculos/
-│
 ├── backend/
 │   ├── prisma/
 │   │   ├── migrations/
-│   │   └── schema.prisma
-│   │
+│   │   ├── schema.prisma
+│   │   └── seed.js
 │   ├── src/
-│   │   ├── config/
-│   │   │   └── prisma.js
-│   │   │
+│   │   ├── config/prisma.js
 │   │   ├── controllers/
-│   │   │   ├── authController.js
-│   │   │   ├── locacaoController.js
-│   │   │   ├── usuarioController.js
-│   │   │   └── veiculoController.js
-│   │   │
 │   │   ├── middlewares/
-│   │   │   └── authMiddleware.js
-│   │   │
 │   │   ├── routes/
-│   │   │   ├── authRoutes.js
-│   │   │   ├── locacaoRoutes.js
-│   │   │   ├── usuarioRoutes.js
-│   │   │   └── veiculoRoutes.js
-│   │   │
 │   │   ├── services/
-│   │   │   ├── authService.js
-│   │   │   ├── locacaoService.js
-│   │   │   ├── usuarioService.js
-│   │   │   └── veiculoService.js
-│   │   │
+│   │   ├── utils/AppError.js
 │   │   └── index.js
-│   │
 │   ├── .env.example
 │   ├── package.json
-│   └── prisma7.config.ts
-│
+│   └── prisma.config.ts
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── context/AuthContext.jsx
+│   │   ├── pages/
+│   │   ├── services/api.js
+│   │   ├── utils/formatadores.js
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── .env.example
+│   └── package.json
 └── README.md
 ```
 
-## Funcionalidades do sistema
+## Funcionalidades
 
 ### Usuários e autenticação
 
-- Cadastro de usuários.
-- Verificação de e-mail já cadastrado.
-- Criptografia de senhas com bcryptjs.
-- Login com e-mail e senha.
-- Geração de token JWT.
-- Proteção de rotas por autenticação.
+- Cadastro de usuário com nome, e-mail e senha (hash com bcryptjs).
+- Login com e-mail e senha, retornando um token JWT.
+- Middleware que valida `Authorization: Bearer <token>` e confirma que o usuário ainda existe.
+- A senha nunca é devolvida pela API.
 
 ### Veículos
 
-- Cadastro de veículos.
-- Listagem de veículos cadastrados.
-- Consulta de veículos disponíveis.
-- Validação das informações dos veículos.
-- Verificação de placas duplicadas.
-- Controle de disponibilidade.
+- Cadastro com validação de campos, placa única e diária maior que zero.
+- Listagem de todos os veículos e consulta apenas dos disponíveis.
 
 ### Locações
 
-- Cadastro de locações vinculadas ao usuário autenticado.
-- Consulta das locações do próprio usuário.
-- Cálculo automático do valor total da locação.
-- Controle de disponibilidade dos veículos.
-- Finalização de locações.
-- Registro da data efetiva de devolução.
-- Liberação do veículo após a devolução.
+- Registro de locação para o usuário autenticado (o usuário vem do token, nunca do corpo da requisição).
+- Listagem do histórico do usuário autenticado, com os dados do veículo (`include`).
+- Cálculo do valor total no backend: qualquer fração de 24 horas conta como uma diária completa.
+- Finalização com registro da data de devolução e liberação do veículo.
+
+### Frontend
+
+- Telas de cadastro e login, exibição do usuário logado e logout.
+- Veículos: formulário de cadastro, listagem e filtro "somente disponíveis".
+- Locações: escolha do veículo, datas, registro, histórico com valor total e botão de finalizar.
+- Mensagens de sucesso e erro vindas da API; o token é validado pelo backend ao abrir a aplicação (`GET /auth/perfil`).
 
 ## Modelo do banco de dados
 
-O banco de dados possui três entidades principais:
+| Entidade | Campos principais |
+|---|---|
+| **Usuario** | `id` (PK), `nome`, `email` (único), `senha` (hash), `createdAt`, `updatedAt` |
+| **Veiculo** | `id` (PK), `marca`, `modelo`, `ano`, `placa` (única), `valorDiaria`, `ativo`, `createdAt`, `updatedAt` |
+| **Locacao** | `id` (PK), `usuarioId` (FK), `veiculoId` (FK), `dataInicio`, `dataFim` (devolução prevista), `dataDevolucao` (opcional), `valorTotal`, `status` (`ATIVA`, `FINALIZADA`, `CANCELADA`), `createdAt`, `updatedAt` |
 
-- **Usuario:** armazena os dados dos usuários cadastrados.
-- **Veiculo:** armazena as informações dos veículos.
-- **Locacao:** registra as locações realizadas pelos usuários.
+O campo `ativo` de `Veiculo` representa a disponibilidade: `true` quando o veículo está livre e `false` enquanto há uma locação ativa.
 
 ### Relacionamentos
 
-- Um usuário pode realizar várias locações.
-- Um veículo pode estar relacionado a várias locações ao longo do tempo.
-- Cada locação pertence a um único usuário e a um único veículo.
+- Um `Usuario` possui várias `Locacao` (1:N) por `Locacao.usuarioId`.
+- Um `Veiculo` possui várias `Locacao` ao longo do tempo (1:N) por `Locacao.veiculoId`.
+- As chaves estrangeiras usam `ON DELETE RESTRICT`, preservando o histórico.
 
 ## Como executar o projeto
 
 ### 1. Pré-requisitos
 
-Antes de iniciar, é necessário ter instalado:
-
-- Node.js.
-- npm.
+- Node.js 20 ou superior e npm.
 - MySQL Server.
 - Git.
 
@@ -121,128 +104,166 @@ Antes de iniciar, é necessário ter instalado:
 
 ```bash
 git clone https://github.com/leandrabazilio/sistema-locacao-veiculos.git
-```
-
-Acesse a pasta do projeto:
-
-```bash
 cd sistema-locacao-veiculos
 ```
 
-### 3. Acessar o backend
+### 3. Backend
 
 ```bash
 cd backend
-```
-
-### 4. Instalar as dependências
-
-```bash
 npm install
 ```
 
-### 5. Configurar o banco de dados
-
-No MySQL, crie o banco de dados:
+Crie o banco no MySQL:
 
 ```sql
 CREATE DATABASE locacao_veiculos;
 ```
 
-Na pasta `backend`, crie um arquivo chamado `.env`, utilizando o `.env.example` como referência.
-
-Configure as variáveis:
+Crie o arquivo `.env` a partir do `.env.example` e preencha:
 
 ```env
 DATABASE_URL="mysql://USUARIO:SENHA@localhost:3306/locacao_veiculos"
-JWT_SECRET="sua_chave_secreta"
+JWT_SECRET="defina_uma_chave_secreta"
+PORT=3000
+FRONTEND_URL="http://localhost:5173"
 ```
 
-Substitua `USUARIO` e `SENHA` pelas credenciais do seu MySQL. Utilize uma chave secreta própria para o JWT.
-
-### 6. Executar as migrações
-
-Com o banco criado e o arquivo `.env` configurado, execute:
+Aplique as migrations, gere o Prisma Client e carregue os dados de exemplo:
 
 ```bash
 npx prisma migrate dev
-```
-
-### 7. Gerar o Prisma Client
-
-```bash
 npx prisma generate
+npm run seed
 ```
 
-### 8. Iniciar o servidor
-
-Para iniciar em modo de desenvolvimento:
+Inicie a API:
 
 ```bash
 npm run dev
 ```
 
-O servidor será iniciado no endereço:
+A API ficará em `http://localhost:3000`.
 
-```text
-http://localhost:3000
+### 4. Frontend
+
+Em outro terminal:
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
 ```
 
-Para verificar se a API está funcionando, acesse:
+A interface ficará em `http://localhost:5173`.
 
-```text
-http://localhost:3000/
-```
+### 5. Dados de exemplo
 
-## Principais rotas da API
+O comando `npm run seed` cria (sem duplicar se executado de novo):
+
+- Usuários `maria@exemplo.com` e `joao@exemplo.com`, ambos com a senha `123456`.
+- Seis veículos, sendo um deles (Toyota Corolla) já locado.
+- Duas locações da Maria: uma finalizada e uma ativa.
+
+## Rotas da API
 
 | Método | Rota | Descrição | Autenticação |
 |---|---|---|---|
 | POST | `/usuarios` | Cadastrar usuário | Não |
-| POST | `/auth/login` | Realizar login | Não |
+| POST | `/auth/login` | Login, retorna o JWT | Não |
+| GET | `/auth/perfil` | Dados do usuário autenticado | Sim |
 | POST | `/veiculos` | Cadastrar veículo | Sim |
 | GET | `/veiculos` | Listar veículos | Sim |
 | GET | `/veiculos/disponiveis` | Listar veículos disponíveis | Sim |
-| POST | `/locacoes` | Criar locação | Sim |
+| POST | `/locacoes` | Registrar locação | Sim |
 | GET | `/locacoes` | Listar locações do usuário | Sim |
 | PATCH | `/locacoes/:id/finalizar` | Finalizar locação | Sim |
 
-As rotas protegidas exigem o envio do token JWT no cabeçalho da requisição:
+Exemplo de corpo para `POST /locacoes`:
 
-```text
-Authorization: Bearer SEU_TOKEN
+```json
+{
+  "veiculoId": 2,
+  "dataInicio": "2026-11-10T10:00:00.000Z",
+  "dataFim": "2026-11-13T10:00:00.000Z"
+}
 ```
+
+### Códigos HTTP
+
+| Código | Uso |
+|---|---|
+| 200 / 201 | Sucesso / recurso criado |
+| 400 | Dados inválidos |
+| 401 | Token ausente, inválido ou credenciais incorretas |
+| 403 | Finalizar locação de outro usuário |
+| 404 | Veículo, locação ou rota inexistente |
+| 409 | Conflito: e-mail ou placa duplicados, veículo indisponível, locação já finalizada |
+| 500 | Erro interno |
 
 ## Regras de negócio
 
-- Não é permitido cadastrar usuários com e-mails já existentes.
-- Não é permitido cadastrar veículos com placas já cadastradas.
+- E-mails e placas não podem ser duplicados.
 - O valor da diária deve ser maior que zero.
-- A data final da locação deve ser posterior à data inicial.
-- O sistema calcula automaticamente o valor total da locação.
-- Qualquer período adicional inferior a 24 horas é contabilizado como uma diária completa.
-- Um veículo não pode possuir mais de uma locação ativa simultaneamente.
-- Somente o usuário responsável pode consultar e finalizar suas próprias locações.
-- Ao finalizar uma locação, o veículo volta a ficar disponível.
-- Uma locação já finalizada não pode ser finalizada novamente.
+- A data de devolução prevista deve ser posterior à data de início.
+- O valor total é calculado no backend, contando qualquer fração de 24 horas como diária completa.
+- Um veículo não pode ter mais de uma locação ativa; ao iniciar a locação ele fica indisponível.
+- Somente o dono da locação pode consultá-la e finalizá-la.
+- Ao finalizar, o veículo volta a ficar disponível; uma locação finalizada não pode ser finalizada de novo.
+- Veículos e locações não são excluídos, preservando o histórico.
 
-## Organização da arquitetura
+## Arquitetura e decisões
 
-O backend foi organizado em camadas para facilitar a manutenção e a compreensão do código:
+- **Routes:** mapeiam endpoints e aplicam o middleware de autenticação.
+- **Controllers:** recebem a requisição HTTP e devolvem a resposta.
+- **Services:** concentram validações, regras de negócio e acesso ao Prisma.
+- **Middlewares:** autenticação JWT, CORS e tratamento centralizado de erros.
+- **AppError:** erro com código HTTP lançado pelos services; o middleware de erros converte em resposta JSON.
 
-- **Routes:** definem os endpoints da API.
-- **Controllers:** recebem as requisições e retornam as respostas HTTP.
-- **Services:** concentram as regras de negócio e a comunicação com o banco de dados.
-- **Middlewares:** realizam a autenticação e a validação do token.
-- **Config:** concentra a configuração da conexão com o banco de dados.
+### Concorrência
+
+Criação e finalização de locação rodam dentro de `prisma.$transaction`. O veículo só é reservado por um `updateMany` condicional (`where ativo = true`), e a locação só é encerrada por um `updateMany` condicional (`where status = ATIVA`). Em duas requisições simultâneas, apenas uma altera uma linha; a outra recebe `409`.
+
+## Frontend (React)
+
+O frontend fica em `frontend/`, foi criado com Vite e usa React com componentes funcionais e hooks.
+
+### Organização
+
+| Pasta / arquivo | Função |
+|---|---|
+| `src/main.jsx` | Ponto de entrada; renderiza `App` dentro do `AuthProvider`. |
+| `src/App.jsx` | Define a tela exibida: verificação de sessão, autenticação ou área logada com abas. |
+| `src/context/AuthContext.jsx` | Estado global do usuário autenticado (`usuario`, `entrar`, `sair`, `tratarErro`). |
+| `src/services/api.js` | Camada de acesso à API com `fetch`; envia o token em `Authorization: Bearer`. |
+| `src/pages/` | `Autenticacao`, `Veiculos` e `Locacoes`. Buscam dados, guardam o estado e tratam as respostas. |
+| `src/components/` | `Cabecalho`, `Mensagem`, `FormLogin`, `FormCadastro`, `FormVeiculo`, `ListaVeiculos`, `FormLocacao`, `ListaLocacoes`. |
+| `src/utils/formatadores.js` | Formatação de moeda e datas no padrão brasileiro. |
+| `src/styles.css` | Estilos da interface (responsiva). |
+
+### Telas
+
+- **Entrar / Cadastrar:** formulários de login e de criação de conta.
+- **Veículos:** formulário de cadastro, tabela da frota e filtro "Somente disponíveis".
+- **Minhas locações:** escolha do veículo disponível e das datas, registro da locação, histórico com valor total e botão "Finalizar" nas locações ativas.
+
+### Como funciona
+
+- Formulários controlados: cada campo tem estado em `useState`, com `value` e `onChange`.
+- Ao enviar, o formulário chama uma função recebida por props; a página chama a API, exibe a mensagem de sucesso ou erro e recarrega as listas, atualizando a interface.
+- O token JWT fica no `localStorage`. Ao abrir a aplicação, `GET /auth/perfil` confirma no backend que o token ainda é válido; se não for, o usuário volta para o login.
+- Respostas 401 em operações protegidas encerram a sessão automaticamente.
+- O valor total da locação é calculado no backend e apenas exibido pelo frontend.
+
+### Configuração
+
+O endereço da API é definido em `frontend/.env` pela variável `VITE_API_URL` (padrão `http://localhost:3000`). O backend precisa ter `FRONTEND_URL` igual ao endereço do frontend (padrão `http://localhost:5173`) para liberar o CORS.
 
 ## Segurança
 
-- As senhas são armazenadas utilizando hash com bcryptjs.
-- A autenticação utiliza tokens JWT.
-- As rotas de veículos e locações exigem autenticação.
-- As informações de conexão e a chave JWT são armazenadas em variáveis de ambiente.
-- O arquivo `.env` não deve ser enviado ao repositório.
+- Senhas com hash bcryptjs, nunca em texto puro nem nas respostas.
+- Segredo do JWT e conexão com o banco em variáveis de ambiente; o `.env` não é versionado.
 
 ## Integrantes
 
@@ -253,4 +274,4 @@ O backend foi organizado em camadas para facilitar a manutenção e a compreens�
 
 **Centro Universitário de João Pessoa (UNIPÊ)**
 
-Projeto acadêmico desenvolvido como atividade prática de desenvolvimento web.
+Projeto acadêmico desenvolvido como atividade prática da disciplina Programação com Frameworks Web.
